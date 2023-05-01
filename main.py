@@ -1,7 +1,10 @@
 import telebot
 from pipe_calculation import pipe_calculation
+from pipe_calculation import check_data
+from telebot.types import Message
+import os
 
-TOKEN = "6050002447:AAFSnC3qp1on3AgLMbjZ-dO3tPHiJWrTers"
+TOKEN = os.getenv('PIPE_TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
 bot.set_my_commands([telebot.types.BotCommand("/start_bot", "Ввести данные")])
@@ -21,20 +24,23 @@ def input_data(message):
 
 
 @bot.message_handler(content_types=['text'])
-def diameter(message):
+def diameter(message: Message):
     diam = message.text
-    if float(diam) > 0:
+    if check_data(diam):
         bot.send_message(message.chat.id, "<b>Введите толщину стенки (мм)</b>", parse_mode='html')
         bot.register_next_step_handler(message, thickness, diam)
     else:
         bot.send_message(message.chat.id, "Диаметр должен быть больше 0")
 
 
-@bot.message_handler(content_types=['text'])
-def thickness(message, diam):
+def thickness(message: Message, diam):
     thick = message.text
-    result = round(pipe_calculation(diam, thick), 2)
-    bot.send_message(message.chat.id, f"Результат равен: {result} кг")
+    if check_data(thick) and float(thick) < float(diam):
+        result = round(pipe_calculation(diam, thick), 2)
+        bot.send_message(message.chat.id, f"<i>Масса погонного метра трубы равна: "
+                                          f"{result} кг</i>", parse_mode='html')
+    else:
+        bot.send_message(message.chat.id, "Вы ввели некорректные данные. Попробуйте заново")
 
 
 bot.polling(non_stop=True)
